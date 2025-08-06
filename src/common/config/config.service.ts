@@ -84,7 +84,6 @@ export class AppConfigService {
 			secretAccessKey: this.get<string>('S3_SECRET_KEY', 'minio123'),
 			bucket: this.get<string>('S3_BUCKET', 'jinaq-media'),
 			imagePrefix: this.get<string>('S3_IMAGE_PREFIX', 'images'),
-			audioPrefix: this.get<string>('S3_AUDIO_PREFIX', 'audio'),
 			usePathStyle: this.get<boolean>('S3_PATH_STYLE', true),
 		}
 	}

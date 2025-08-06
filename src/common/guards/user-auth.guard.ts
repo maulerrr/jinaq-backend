@@ -1,7 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common'
-import { UserSessionService } from 'src/modules/auth/services/user-session.service'
 import { CookieService } from '../services/cookie.service'
 import { UserRequest } from '../types/user-request.interface'
+import { UserSessionService } from 'src/modules/auth/services/session.service'
 
 @Injectable()
 export class UserAuthGuard implements CanActivate {

@@ -1,95 +1,77 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
-import { PrismaService } from '../../prisma/prisma.service'
-import { UserUpdate, UserProfileResponse, UserFilter } from './dtos/users.dtos'
-import { paginatePrisma } from '../../common/utils/prisma-pagination.util'
-import { PaginatedResponse } from '../../common/utils/pagination.util'
-import { hash } from 'bcryptjs'
+import { Injectable } from '@nestjs/common'
+import { PrismaService } from 'src/prisma/prisma.service'
+import { hash } from 'bcrypt'
+import { CreateUserDto, UpdateUserDto, UserFilter } from './dtos/users.dtos'
+import { Prisma } from '@prisma/client'
+import { paginatePrisma } from 'src/common/utils/prisma-pagination.util'
 
 @Injectable()
-export class UserService {
+export class UsersService {
 	constructor(private readonly prisma: PrismaService) {}
 
-	async getUsers(userFilter: UserFilter): Promise<PaginatedResponse<UserProfileResponse>> {
-		const { page, pageSize, disablePagination, ...filters } = userFilter
+	async create(createUserDto: CreateUserDto) {
+		const hashedPassword = await hash(createUserDto.password, 10)
+		return this.prisma.user.create({
+			data: {
+				...createUserDto,
+				password: hashedPassword,
+			},
+		})
+	}
 
-		const paginatedUsers = await paginatePrisma(
+	findAll(filters: UserFilter) {
+		const where: Prisma.UserWhereInput = {}
+
+		if (filters.search) {
+			where.OR = [
+				{ username: { contains: filters.search, mode: 'insensitive' } },
+				{ email: { contains: filters.search, mode: 'insensitive' } },
+				{ firstName: { contains: filters.search, mode: 'insensitive' } },
+				{ lastName: { contains: filters.search, mode: 'insensitive' } },
+			]
+		}
+
+		if (filters.onboarded) where.onboarded = filters.onboarded
+		if (filters.role) where.role = filters.role
+		if (filters.subscription) where.subscription = filters.subscription
+		if (filters.verified) where.verified = filters.verified
+
+		const paginatedData = paginatePrisma(
 			this.prisma.user,
-			{ where: filters },
+			{
+				where: where,
+			},
 			this.prisma.user,
-			{ where: filters },
-			{ page, pageSize, disablePagination },
+			{ where },
+			{
+				page: filters.page,
+				pageSize: filters.pageSize,
+				disablePagination: filters.disablePagination,
+			},
 		)
 
-		return {
-			...paginatedUsers,
-			data: paginatedUsers.data.map(user => ({
-				id: Number(user.id),
-				firstName: user.firstName,
-				lastName: user.lastName,
-				email: user.email,
-				username: user.username,
-				role: user.role,
-				verified: user.verified,
-				onboarded: user.onboarded,
-				avatarUrl: null, // TODO: Implement avatar logic
-				cityId: user.cityId ? Number(user.cityId) : null,
-			})),
-		}
+		return paginatedData
 	}
 
-	async getUserById(userId: number): Promise<UserProfileResponse> {
-		const user = await this.prisma.user.findUnique({ where: { id: BigInt(userId) } })
-		if (!user) {
-			throw new NotFoundException('User not found')
-		}
-		return {
-			id: Number(user.id),
-			firstName: user.firstName,
-			lastName: user.lastName,
-			email: user.email,
-			username: user.username,
-			role: user.role,
-			verified: user.verified,
-			onboarded: user.onboarded,
-			avatarUrl: null, // TODO: Implement avatar logic
-			cityId: user.cityId ? Number(user.cityId) : null,
-		}
-	}
-
-	async updateUser(userId: number, userData: UserUpdate): Promise<UserProfileResponse> {
-		const user = await this.prisma.user.findUnique({ where: { id: BigInt(userId) } })
-		if (!user) {
-			throw new NotFoundException('User not found')
-		}
-
-		if (userData.password) {
-			userData.password = await hash(userData.password, 10)
-		}
-
-		const updatedUser = await this.prisma.user.update({
-			where: { id: BigInt(userId) },
-			data: userData,
+	findOne(id: number) {
+		return this.prisma.user.findUnique({
+			where: { id },
 		})
-
-		return {
-			id: Number(updatedUser.id),
-			firstName: updatedUser.firstName,
-			lastName: updatedUser.lastName,
-			email: updatedUser.email,
-			username: updatedUser.username,
-			role: updatedUser.role,
-			verified: updatedUser.verified,
-			onboarded: updatedUser.onboarded,
-			avatarUrl: null, // TODO: Implement avatar logic
-			cityId: updatedUser.cityId ? Number(updatedUser.cityId) : null,
-		}
 	}
 
-	async deleteUser(userId: number): Promise<void> {
-		const user = await this.prisma.user.findUnique({ where: { id: BigInt(userId) } })
-		if (!user) {
-			throw new NotFoundException('User not found')
+	async update(id: number, updateUserDto: UpdateUserDto) {
+		if (updateUserDto.password) {
+			updateUserDto.password = await hash(updateUserDto.password, 10)
 		}
-		await this.prisma.user.delete({ where: { id: BigInt(userId) } })
+		return this.prisma.user.update({
+			where: { id },
+			data: updateUserDto,
+		})
+	}
+
+	remove(id: number) {
+		return this.prisma.user.delete({
+			where: { id },
+		})
 	}
 }

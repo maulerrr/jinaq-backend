@@ -1,10 +1,13 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // Enums
@@ -12,83 +15,756 @@ enum UserRole {
   USER
   SUPERADMIN
   MINISTRY
+
+  @@map("user_role_enum")
 }
 
 enum SubscriptionType {
   FREE
   PAID
+
+  @@map("subscription_type_enum")
 }
 
 enum LanguageLevel {
   NATIVE
   FLUENT
   BEGINNER
+
+  @@map("language_level_enum")
 }
 
-// TODO: Fill in InterestsEnum values from interests_model.py
 enum InterestsEnum {
-  // Example values, replace with actual ones from Python
-  SCIENCE
+  MATHEMATICS
+  PHYSICS
+  CHEMISTRY
+  BIOLOGY
+  COMPUTER_SCIENCE
+  HISTORY
+  GEOGRAPHY
+  LITERATURE
+  LANGUAGES
   ART
+  MUSIC
   SPORTS
+  ECONOMICS
+  PSYCHOLOGY
+  MEDICINE
+  ENGINEERING
+  BUSINESS
+  DESIGN
+  AI_MACHINE_LEARNING
+  DATA_SCIENCE
+  CYBERSECURITY
+  GAME_DEVELOPMENT
+  DIGITAL_CONTENT_CREATION
+  E_SPORTS
+  ROBOTICS
+  GRAPHIC_DESIGN
+  FASHION
+  ENTREPRENEURSHIP
+  ENVIRONMENTAL_STUDIES
+  MENTAL_WELLBEING
+  FINANCE
+  COOKING
+  TRAVEL
+
+  @@map("interests_enum")
 }
 
-// Models
+enum ProfessionCategory {
+  TECHNOLOGY
+  MEDICINE
+  EDUCATION
+  FINANCE
+  ENGINEERING
+  ARTS
+  BUSINESS
+  LAW
+  SCIENCE
+  SOCIAL_SCIENCES
+  GOVERNMENT
+  AGRICULTURE
 
+  @@map("profession_category_enum")
+}
+
+enum OrganizationSubscriptionType {
+  FREE
+  PAID
+
+  @@map("organization_subscription_type_enum")
+}
+
+enum OrganizationUserRole {
+  STUDYING
+  GRADUATED
+  STAFF
+  STUDENT
+
+  @@map("organization_user_role_enum")
+}
+
+enum TestSubmissionStatus {
+  COMPLETED
+  ACTIVE
+  NOT_STARTED
+}
+
+enum PersonalityAnalysisAttributeType {
+  PROS
+  CONS
+}
+
+enum PopularityEnum {
+  LOW
+  MEDIUM
+  HIGH
+
+  @@map("popularity_enum")
+}
+
+enum InstitutionMajorCategory {
+  STEM
+  BUSINESS
+  ARTS
+  HUMANITIES
+  MEDICINE
+  LAW
+  OTHER
+}
+
+enum InstitutionFinancingType {
+  PRIVATE
+  GOV
+  AUTONOMOUS
+}
+
+enum InstitutionType {
+  SCHOOL
+  COLLEGE
+  UNIVERSITY
+}
+
+enum EnrollmentRequirementType {
+  ACADEMIC
+  LANGUAGE
+  OTHER
+}
+
+enum AttributeType {
+  PROS
+  CONS
+}
+
+enum ProjectStatus {
+  RECRUITMENT
+  ACTIVE
+  ARCHIVED
+}
+
+enum ProjectMemberRole {
+  OWNER
+  MAINTAINER
+  MEMBER
+  CANDIDATE
+}
+
+enum RoadmapType {
+  ENROLLMENT
+  EMPLOYMENT
+}
+
+enum RoadmapStatus {
+  ACTIVE
+  COMPLETED
+}
+
+// Base Models
+model Country {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  emoji     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cities       City[]
+  institutions Institution[]
+
+  @@index([name])
+  @@map("countries")
+}
+
+model City {
+  id        Int      @id @default(autoincrement())
+  countryId Int      @map("country_id")
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  country      Country       @relation(fields: [countryId], references: [id])
+  institutions Institution[]
+  users        User[]
+
+  @@index([name])
+  @@map("cities")
+}
+
+// User Models
 model User {
-  id                BigInt                @id @default(autoincrement())
-  firstName         String
-  lastName          String
-  role              UserRole              @default(USER)
-  email             String                @unique
-  username          String                @unique
-  password          String
-  dateOfBirth       DateTime?             
-  subscription      SubscriptionType      @default(FREE)
-  verified          Boolean               @default(false)
-  organizationName  String?
-  cityId            BigInt?
-  bioAbout          String?
-  bannerId          BigInt?
-  avatarId          BigInt?
-  onboarded         Boolean               @default(false)
-  interests         InterestsEnum[]       
-  sessions          UserSession[]         
-  academicInfo      UserAcademic?         
-  languageProficiencies UserLanguageProficiency[]
-  // posts, comments, likes, universityAnalyses relations omitted for brevity
+  id               Int              @id @default(autoincrement())
+  firstName        String           @map("first_name")
+  lastName         String           @map("last_name")
+  role             UserRole         @default(USER)
+  email            String           @unique
+  username         String           @unique
+  password         String
+  dateOfBirth      DateTime?        @map("date_of_birth") @db.Timestamptz(6)
+  subscription     SubscriptionType @default(FREE)
+  verified         Boolean          @default(false)
+  organizationName String?          @map("organization_name")
+  cityId           Int?             @map("city_id")
+  bioAbout         String?          @map("bio_about") @db.Text
+  bannerKey        String?          @map("banner_key")
+  avatarKey        String?          @map("avatar_key")
+  onboarded        Boolean          @default(false)
+  interests        InterestsEnum[]
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  city                  City?                     @relation(fields: [cityId], references: [id])
+  session               UserSession?
+  posts                 Post[]
+  comments              Comment[]
+  likes                 PostLike[]
+  academicInfo          UserAcademic?
+  languageProficiencies UserLanguageProficiency[]
+  universityAnalyses    UniversitiesAnalysis[]
+  organizationUsers     OrganizationUser[]
+  testSubmissions       TestSubmission[]
+  personalityAnalyses   PersonalityAnalysis[]
+  projects              Project[]
+  projectMembers        ProjectMember[]
+  projectVotes          ProjectVote[]
+  roadmaps              Roadmap[]
+
+  @@index([email])
+  @@index([username])
   @@map("users")
 }
 
-model UserSession {
-  id         BigInt   @id @default(autoincrement())
-  userId     BigInt
-  token      String   @unique
-  expiresAt  DateTime
-  user       User     @relation(fields: [userId], references: [id])
-
-  @@map("user_sessions")
-}
-
 model UserAcademic {
-  id      BigInt   @id @default(autoincrement())
-  userId  BigInt   @unique
-  gpa     Float?
-  sat     Int?
-  ielts   Float?
-  toefl   Int?
-  user    User     @relation(fields: [userId], references: [id])
+  id     Int    @id @default(autoincrement())
+  userId Int    @unique @map("user_id")
+  gpa    Float?
+  sat    Int?
+  ielts  Float?
+  toefl  Int?
+
+  user User @relation(fields: [userId], references: [id])
 
   @@map("users_academic")
 }
 
 model UserLanguageProficiency {
-  id      BigInt        @id @default(autoincrement())
-  userId  BigInt
+  id       Int           @id @default(autoincrement())
+  userId   Int           @map("user_id")
   language String
-  level   LanguageLevel
-  user    User          @relation(fields: [userId], references: [id])
+  level    LanguageLevel
+
+  user User @relation(fields: [userId], references: [id])
 
   @@map("users_language_proficiency")
+}
+
+model UserSession {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([token])
+  @@map("user_sessions")
+}
+
+// Organization Models
+model Organization {
+  id           Int                          @id @default(autoincrement())
+  name         String                       @unique
+  shortName    String?                      @map("short_name")
+  email        String?
+  subscription OrganizationSubscriptionType @default(FREE)
+  createdAt    DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime                     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organizationUsers  OrganizationUser[]
+  organizationGroups OrganizationGroup[]
+
+  @@index([name])
+  @@map("organizations")
+}
+
+model OrganizationUser {
+  id             Int                  @id @default(autoincrement())
+  userId         Int                  @map("user_id")
+  organizationId Int                  @map("organization_id")
+  status         String?
+  role           OrganizationUserRole @default(STUDENT)
+  groupId        Int?                 @map("group_id")
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user         User               @relation(fields: [userId], references: [id])
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  group        OrganizationGroup? @relation(fields: [groupId], references: [id])
+
+  @@map("organization_users")
+}
+
+model OrganizationGroup {
+  id             Int      @id @default(autoincrement())
+  organizationId Int      @map("organization_id")
+  name           String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  organizationUsers OrganizationUser[]
+
+  @@map("organization_groups")
+}
+
+// Post Models
+model Post {
+  id        Int      @id @default(autoincrement())
+  authorId  Int      @map("author_id")
+  content   String   @db.Text
+  tags      String[]
+  mentions  String[]
+  projectId Int?     @map("project_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  author   User       @relation(fields: [authorId], references: [id])
+  comments Comment[]
+  likes    PostLike[]
+  project  Project?   @relation(fields: [projectId], references: [id])
+
+  @@map("posts")
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("post_comments")
+}
+
+model PostLike {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("post_likes")
+}
+
+// Profession Models
+model Profession {
+  id          Int             @id @default(autoincrement())
+  name        String          @unique
+  category    ProfessionCategory
+  description String?
+  startSalary Decimal?        @map("start_salary") @db.Decimal(10, 2)
+  endSalary   Decimal?        @map("end_salary") @db.Decimal(10, 2)
+  popularity  PopularityEnum?
+  skills      String[]
+
+  personalityAnalyses PersonalityAnalysisProfession[]
+  roadmaps            Roadmap[]
+
+  @@index([name])
+  @@map("professions")
+}
+
+// Test Models
+model Test {
+  id                   Int      @id @default(autoincrement())
+  name                 String
+  description          String?
+  tags                 String[]
+  estimatedTimeMinutes Int?     @map("estimated_time_minutes")
+
+  questions   Question[]
+  submissions TestSubmission[]
+
+  @@map("tests")
+}
+
+model Question {
+  id       Int    @id @default(autoincrement())
+  testId   Int    @map("test_id")
+  question String @db.Text
+  order    Int
+
+  test                    Test                     @relation(fields: [testId], references: [id])
+  answers                 Answer[]
+  testSubmissionQuestions TestSubmissionQuestion[]
+
+  @@map("questions")
+}
+
+model Answer {
+  id         Int      @id @default(autoincrement())
+  questionId Int      @map("question_id")
+  answer     String   @db.Text
+  isCorrect  Boolean? @map("is_correct")
+
+  question                Question                 @relation(fields: [questionId], references: [id])
+  testSubmissionQuestions TestSubmissionQuestion[]
+
+  @@map("answers")
+}
+
+model TestSubmission {
+  id                 Int                  @id @default(autoincrement())
+  testId             Int                  @map("test_id")
+  userId             Int                  @map("user_id")
+  status             TestSubmissionStatus
+  analysisSummary    String?              @map("analysis_summary") @db.Text
+  analysisKeyFactors String[]             @map("analysis_key_factors")
+
+  test             Test                     @relation(fields: [testId], references: [id])
+  user             User                     @relation(fields: [userId], references: [id])
+  submittedAnswers TestSubmissionQuestion[]
+
+  @@map("test_submission")
+}
+
+model TestSubmissionQuestion {
+  id           Int @id @default(autoincrement())
+  submissionId Int @map("submission_id")
+  questionId   Int @map("question_id")
+  answerId     Int @map("answer_id")
+
+  submission TestSubmission @relation(fields: [submissionId], references: [id])
+  question   Question       @relation(fields: [questionId], references: [id])
+  answer     Answer         @relation(fields: [answerId], references: [id])
+
+  @@map("test_submission_question")
+}
+
+// Personality Analysis Models
+model PersonalityAnalysis {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user        User                            @relation(fields: [userId], references: [id])
+  mbti        PersonalityAnalysisMbti?
+  professions PersonalityAnalysisProfession[]
+  majors      PersonalityAnalysisMajor[]
+  attributes  PersonalityAnalysisAttribute[]
+
+  @@map("personality_analysis")
+}
+
+model PersonalityAnalysisMbti {
+  id                     Int      @id @default(autoincrement())
+  personalityAnalysisId  Int      @unique @map("personality_analysis_id")
+  title                  String?
+  description            String?  @db.Text
+  mbtiCode               String?  @map("mbti_code")
+  mbtiName               String?  @map("mbti_name")
+  shortAttributes        String[] @map("short_attributes")
+  workStyles             String[] @map("work_styles")
+  introversionPercentage Int?     @map("introversion_percentage")
+  thinkingPercentage     Int?     @map("thinking_percentage")
+  creativityPercentage   Int?     @map("creativity_percentage")
+  intuitionPercentage    Int?     @map("intuition_percentage")
+  planningPercentage     Int?     @map("planning_percentage")
+  leadingPercentage      Int?     @map("leading_percentage")
+
+  analysis PersonalityAnalysis @relation(fields: [personalityAnalysisId], references: [id])
+
+  @@map("personality_analysis_mbti")
+}
+
+model PersonalityAnalysisProfession {
+  id                    Int  @id @default(autoincrement())
+  personalityAnalysisId Int  @map("personality_analysis_id")
+  professionId          Int  @map("profession_id")
+  percentage            Int?
+
+  analysis   PersonalityAnalysis @relation(fields: [personalityAnalysisId], references: [id])
+  profession Profession          @relation(fields: [professionId], references: [id])
+
+  @@map("personality_analysis_professions")
+}
+
+model PersonalityAnalysisMajor {
+  id                    Int    @id @default(autoincrement())
+  personalityAnalysisId Int    @map("personality_analysis_id")
+  category              String
+
+  analysis PersonalityAnalysis @relation(fields: [personalityAnalysisId], references: [id])
+
+  @@map("personality_analysis_majors")
+}
+
+model PersonalityAnalysisAttribute {
+  id                    Int                              @id @default(autoincrement())
+  personalityAnalysisId Int                              @map("personality_analysis_id")
+  type                  PersonalityAnalysisAttributeType
+  name                  String?
+  description           String?                          @db.Text
+  recommendations       String?                          @db.Text
+
+  analysis PersonalityAnalysis @relation(fields: [personalityAnalysisId], references: [id])
+
+  @@map("personality_analysis_attributes")
+}
+
+// Institution Models
+model Institution {
+  id             Int                      @id @default(autoincrement())
+  name           String
+  shortName      String?                  @map("short_name")
+  description    String?
+  foundationYear String?                  @map("foundation_year")
+  financingType  InstitutionFinancingType @map("financing_type")
+  type           InstitutionType
+  website        String?
+  email          String?
+  contactNumber  String?                  @map("contact_number")
+  cityId         Int                      @map("city_id")
+  countryId      Int                      @map("country_id")
+  address        String?
+  hasDorm        Boolean                  @default(false) @map("has_dorm")
+  imageUrl       String?                  @map("image_url")
+
+  city                   City                               @relation(fields: [cityId], references: [id])
+  country                Country                            @relation(fields: [countryId], references: [id])
+  majors                 InstitutionMajor[]
+  enrollmentDocuments    InstitutionEnrollmentDocument[]
+  enrollmentRequirements InstitutionEnrollmentRequirement[]
+  analysisInstitutes     UniversitiesAnalysisInstitute[]
+  roadmaps               Roadmap[]
+
+  @@map("institutions")
+}
+
+model InstitutionMajor {
+  id               Int                      @id @default(autoincrement())
+  name             String
+  durationYears    Int?                     @map("duration_years")
+  learningLanguage String?                  @map("learning_language")
+  description      String?
+  price            Float?
+  category         InstitutionMajorCategory
+  institutionId    Int                      @map("institution_id")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+
+  @@map("institution_majors")
+}
+
+model InstitutionEnrollmentDocument {
+  id            Int    @id @default(autoincrement())
+  name          String
+  institutionId Int    @map("institution_id")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+
+  @@map("institution_enrollment_documents")
+}
+
+model InstitutionEnrollmentRequirement {
+  id            Int                       @id @default(autoincrement())
+  name          String
+  type          EnrollmentRequirementType
+  value         String?
+  institutionId Int                       @map("institution_id")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+
+  @@map("institution_enrollment_requirements")
+}
+
+// Universities Analysis Models
+model UniversitiesAnalysis {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user       User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutes UniversitiesAnalysisInstitute[]
+
+  @@map("universities_analysis")
+}
+
+model UniversitiesAnalysisInstitute {
+  id                     Int    @id @default(autoincrement())
+  universitiesAnalysisId Int    @map("universities_analysis_id")
+  institutionId          Int    @map("institution_id")
+  chancePercentage       Float? @map("chance_percentage")
+
+  analysis    UniversitiesAnalysis                   @relation(fields: [universitiesAnalysisId], references: [id])
+  institution Institution                            @relation(fields: [institutionId], references: [id])
+  attributes  UniversitiesAnalysisResultsAttribute[]
+  plan        UniversitiesAnalysisResultsPlan[]
+
+  @@map("universities_analysis_institutes")
+}
+
+model UniversitiesAnalysisResultsAttribute {
+  id                               Int           @id @default(autoincrement())
+  universitiesAnalysisInstitutesId Int           @map("universities_analysis_institutes_id")
+  name                             String
+  type                             AttributeType
+  recommendation                   String?       @db.Text
+
+  instituteAnalysis UniversitiesAnalysisInstitute @relation(fields: [universitiesAnalysisInstitutesId], references: [id])
+
+  @@map("universities_analysis_results_attributes")
+}
+
+model UniversitiesAnalysisResultsPlan {
+  id                               Int     @id @default(autoincrement())
+  universitiesAnalysisInstitutesId Int     @map("universities_analysis_institutes_id")
+  order                            Int
+  name                             String
+  description                      String? @db.Text
+  durationMonth                    Int?    @map("duration_month")
+
+  instituteAnalysis UniversitiesAnalysisInstitute @relation(fields: [universitiesAnalysisInstitutesId], references: [id])
+
+  @@map("universities_analysis_results_plan")
+}
+
+// Project Models
+model Project {
+  id          Int           @id @default(autoincrement())
+  name        String
+  interests   InterestsEnum[]
+  description String
+  about       String
+  objectives  String[]
+  skills      String[]
+  status      ProjectStatus @default(RECRUITMENT)
+  bannerImage String?       @map("banner_image")
+  logoImage   String?       @map("logo_image")
+  authorId    Int           @map("author_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  author      User          @relation(fields: [authorId], references: [id])
+  posts       Post[]
+  members     ProjectMember[]
+  images      ProjectImage[]
+  socials     ProjectSocial[]
+  votes       ProjectVote[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        Int               @id @default(autoincrement())
+  userId    Int               @map("user_id")
+  projectId Int               @map("project_id")
+  role      ProjectMemberRole
+  user      User              @relation(fields: [userId], references: [id])
+  project   Project           @relation(fields: [projectId], references: [id])
+
+  @@map("project_members")
+}
+
+model ProjectImage {
+  id        Int    @id @default(autoincrement())
+  projectId Int    @map("project_id")
+  imageKey  String @map("image_key")
+  project   Project @relation(fields: [projectId], references: [id])
+
+  @@map("project_images")
+}
+
+model ProjectSocial {
+  id          Int     @id @default(autoincrement())
+  projectId   Int     @unique @map("project_id")
+  githubUrl   String? @map("github_url")
+  linkedinUrl String? @map("linkedin_url")
+  websiteUrl  String? @map("website_url")
+  twitterUrl  String? @map("twitter_url")
+  project     Project @relation(fields: [projectId], references: [id])
+
+  @@map("project_socials")
+}
+
+model ProjectVote {
+  id        Int      @id @default(autoincrement())
+  projectId Int      @map("project_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  project   Project  @relation(fields: [projectId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("project_votes")
+}
+
+// Roadmap Models
+model Roadmap {
+  id            Int           @id @default(autoincrement())
+  name          String
+  type          RoadmapType
+  institutionId Int?          @map("institution_id")
+  professionId  Int?          @map("profession_id")
+  userId        Int           @map("user_id")
+  deadlineAt    DateTime      @map("deadline_at")
+  status        RoadmapStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  institution   Institution?  @relation(fields: [institutionId], references: [id])
+  profession    Profession?   @relation(fields: [professionId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+  tasks         RoadmapTask[]
+
+  @@map("roadmaps")
+}
+
+model RoadmapTask {
+  id        Int      @id @default(autoincrement())
+  roadmapId Int      @map("roadmap_id")
+  name      String
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  roadmap   Roadmap  @relation(fields: [roadmapId], references: [id])
+  subTasks  RoadmapSubTask[]
+
+  @@map("roadmap_tasks")
+}
+
+model RoadmapSubTask {
+  id        Int      @id @default(autoincrement())
+  taskId    Int      @map("task_id")
+  name      String
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  task      RoadmapTask @relation(fields: [taskId], references: [id])
+
+  @@map("roadmap_sub_tasks")
 }

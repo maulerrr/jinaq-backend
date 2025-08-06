@@ -7,6 +7,7 @@ import {
 	IsEnum,
 	IsDateString,
 	IsNumber,
+	IsDate,
 } from 'class-validator'
 import { UserRole, SubscriptionType, LanguageLevel, InterestsEnum } from '@prisma/client'
 
@@ -64,8 +65,8 @@ export class CurrentUserResponse {
 	username: string
 
 	@IsArray()
-	@IsEnum(UserRole, { each: true })
-	roles: UserRole[]
+	@IsEnum(UserRole)
+	role: UserRole
 
 	@IsBoolean()
 	verified: boolean
@@ -76,6 +77,10 @@ export class CurrentUserResponse {
 	@IsOptional()
 	@IsString()
 	avatarUrl?: string | null
+
+	@IsOptional()
+	@IsString()
+	bannerUrl?: string | null
 }
 
 // Onboarding
@@ -106,7 +111,10 @@ export class UserLanguageProficiencyDto {
 }
 
 export class UserOnboardingRequest {
-	@IsDateString()
+	@IsOptional()
+	cityId?: number
+
+	@IsDate()
 	dateOfBirth: Date
 
 	@IsArray()
@@ -156,4 +164,10 @@ export class UserResponse {
 
 	@IsBoolean()
 	onboarded: boolean
+}
+
+// DTO for file uploads
+export class FileUploadDto {
+	// This DTO is primarily used for type hinting with @UploadedFile()
+	// Specific file validation can be handled by interceptors or guards if needed.
 }

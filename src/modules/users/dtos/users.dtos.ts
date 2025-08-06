@@ -35,8 +35,33 @@ export class UserProfileResponse {
 	@IsNumber()
 	cityId?: number | null
 }
+export class CreateUserDto {
+	@IsString()
+	firstName: string
 
-export class UserUpdate {
+	@IsString()
+	lastName: string
+
+	@IsEmail()
+	email: string
+
+	@IsString()
+	username: string
+
+	@IsString()
+	password: string
+
+	@IsEnum(UserRole)
+	role: UserRole
+
+	@IsBoolean()
+	verified?: boolean = false
+
+	@IsBoolean()
+	onboarded?: boolean = false
+}
+
+export class UpdateUserDto {
 	@IsOptional()
 	@IsString()
 	firstName?: string
@@ -56,16 +81,24 @@ export class UserUpdate {
 	@IsOptional()
 	@IsString()
 	password?: string
+
+	@IsOptional()
+	@IsEnum(UserRole)
+	role?: UserRole
+
+	@IsOptional()
+	@IsBoolean()
+	verified?: boolean = false
+
+	@IsOptional()
+	@IsBoolean()
+	onboarded?: boolean = false
 }
 
 export class UserFilter extends PaginationParamsFilter {
 	@IsOptional()
-	@IsEmail()
-	email?: string
-
-	@IsOptional()
 	@IsString()
-	username?: string
+	search: string
 
 	@IsOptional()
 	@IsEnum(UserRole)

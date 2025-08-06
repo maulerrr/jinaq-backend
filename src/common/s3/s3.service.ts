@@ -83,7 +83,7 @@ export class S3Service implements OnModuleInit {
 	}
 
 	/** Internal uploader using multipart‐capable Upload helper */
-	private async uploadObject(
+	public async uploadObject(
 		key: string,
 		body: Buffer | Readable,
 		contentType: string,
