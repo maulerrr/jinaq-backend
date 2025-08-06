@@ -1,0 +1,13 @@
+INSERT INTO questions (id, test_id, question, order) VALUES (1, 1, 'What is the capital of Australia?', 1);
+INSERT INTO questions (id, test_id, question, order) VALUES (2, 1, 'Who wrote "To Kill a Mockingbird"?', 2);
+INSERT INTO questions (id, test_id, question, order) VALUES (3, 1, 'What is the chemical symbol for gold?', 3);
+INSERT INTO questions (id, test_id, question, order) VALUES (4, 1, 'What is the largest ocean on Earth?', 4);
+INSERT INTO questions (id, test_id, question, order) VALUES (5, 1, 'In which year did the first man land on the moon?', 5);
+INSERT INTO questions (id, test_id, question, order) VALUES (6, 2, 'When making a decision, do you typically rely more on objective logic or personal values?', 1);
+INSERT INTO questions (id, test_id, question, order) VALUES (7, 2, 'Are you more energized by social interaction or by solitary activities?', 2);
+INSERT INTO questions (id, test_id, question, order) VALUES (8, 3, 'Do you find it easy to express yourself through writing or speaking?', 1);
+INSERT INTO questions (id, test_id, question, order) VALUES (9, 3, 'Are you good at understanding the emotions and motivations of others?', 2);
+INSERT INTO questions (id, test_id, question, order) VALUES (10, 4, 'How often do you consciously try to understand how others are feeling?', 1);
+INSERT INTO questions (id, test_id, question, order) VALUES (11, 4, 'Do you find it easy to manage your own stress and emotional reactions?', 2);
+INSERT INTO questions (id, test_id, question, order) VALUES (12, 5, 'When working on a team project, do you prefer to take charge and delegate tasks?', 1);
+INSERT INTO questions (id, test_id, question, order) VALUES (13, 5, 'How comfortable are you with making difficult decisions that might be unpopular?', 2);

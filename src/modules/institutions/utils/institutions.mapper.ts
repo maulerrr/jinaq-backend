@@ -21,6 +21,7 @@ import {
 	UniversitiesAnalysisInstitutesDto,
 	UniversitiesAnalysisResultsAttributesDto,
 	UniversitiesAnalysisResultsPlanDto,
+	BaseUniversityAnalysis,
 } from '../dtos/institutions.dto'
 
 type InstitutionWithRelations = Institution & {
@@ -31,9 +32,17 @@ type InstitutionWithRelations = Institution & {
 	enrollmentRequirements?: InstitutionEnrollmentRequirement[]
 }
 
+type UniversitiesAnalysisWithInsitutes = UniversitiesAnalysis & {
+	institutes: (UniversitiesAnalysisInstitute & {
+		institution: InstitutionWithRelations
+	})[]
+}
+
 type UniversitiesAnalysisWithRelations = UniversitiesAnalysis & {
 	institutes: (UniversitiesAnalysisInstitute & {
 		institution: InstitutionWithRelations
+		attributes: UniversitiesAnalysisResultsAttribute[]
+		plan: UniversitiesAnalysisResultsPlan[]
 	})[]
 }
 
@@ -149,11 +158,15 @@ export function toUniversitiesAnalysisResultsPlanDto(
 export function toUniversitiesAnalysisInstitutesDto(
 	institute: UniversitiesAnalysisInstitute & {
 		institution: InstitutionWithRelations
+		attributes: UniversitiesAnalysisResultsAttribute[]
+		plan: UniversitiesAnalysisResultsPlan[]
 	},
 ): UniversitiesAnalysisInstitutesDto {
 	return {
 		institution: toInstitutionDto(institute.institution),
 		chancePercentage: institute.chancePercentage ?? undefined,
+		attributes: institute.attributes.map(toUniversitiesAnalysisResultsAttributesDto),
+		plan: institute.plan.map(toUniversitiesAnalysisResultsPlanDto),
 	}
 }
 
@@ -164,5 +177,18 @@ export function toUniversityAnalysisDto(
 		id: analysis.id,
 		createdAt: analysis.createdAt,
 		institutes: analysis.institutes.map(toUniversitiesAnalysisInstitutesDto),
+	}
+}
+
+export function toBaseUniversityAnalysisDto(
+	analysis: UniversitiesAnalysisWithInsitutes,
+): BaseUniversityAnalysis {
+	return {
+		id: analysis.id,
+		createdAt: analysis.createdAt,
+		institutes: analysis.institutes.map(institute => ({
+			institution: toInstitutionDto(institute.institution),
+			chancePercentage: institute.chancePercentage ?? undefined,
+		})),
 	}
 }

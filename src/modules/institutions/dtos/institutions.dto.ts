@@ -85,9 +85,22 @@ export class UniversitiesAnalysisResultsPlanDto {
 	durationMonth?: number
 }
 
+export class BaseUniversityAnalysisInstituteDto {
+	institution: InstitutionDto
+	chancePercentage?: number
+}
+
 export class UniversitiesAnalysisInstitutesDto {
 	institution: InstitutionDto
 	chancePercentage?: number
+	attributes: UniversitiesAnalysisResultsAttributesDto[]
+	plan: UniversitiesAnalysisResultsPlanDto[]
+}
+
+export class BaseUniversityAnalysis {
+	id: number
+	createdAt: Date
+	institutes: BaseUniversityAnalysisInstituteDto[]
 }
 
 export class UniversityAnalysisDto {
@@ -120,4 +133,23 @@ export interface LLMUniversityAnalysisResponse {
 export interface InstituteProbability {
 	institutionId: number
 	chancePercentage: number
+}
+
+export interface InstituteAnalysisResultAttribute {
+	name: string
+	type: AttributeType
+	recommendation?: string
+	description?: string
+}
+
+export interface InstituteAnalysisResultPlan {
+	order: number
+	name: string
+	description?: string
+	durationMonth?: number
+}
+
+export interface UniversityAnalysis {
+	attributes: InstituteAnalysisResultAttribute[]
+	plan: InstituteAnalysisResultPlan[]
 }

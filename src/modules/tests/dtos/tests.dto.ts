@@ -1,20 +1,10 @@
 import {
 	TestSubmissionStatus,
 	PersonalityAnalysisAttributeType,
-	PersonalityAnalysis,
-	PersonalityAnalysisMbti,
-	PersonalityAnalysisProfession,
-	PersonalityAnalysisMajor,
-	PersonalityAnalysisAttribute,
-	Test,
-	Question,
-	Answer,
-	TestSubmission,
-	TestSubmissionQuestion,
-	Profession,
+	MAJOR_CATEGORY,
 } from '@prisma/client'
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsInt, IsOptional, IsString, IsArray, IsBoolean } from 'class-validator'
+import { IsInt, IsOptional, IsString, IsArray } from 'class-validator'
 import { Type } from 'class-transformer'
 
 export class TestSummaryDto {
@@ -216,37 +206,60 @@ export class PersonalityAnalysisDto {
 }
 
 // Interfaces for LLM responses (to be implemented by user)
-export interface LLMPersonalityAnalysisResponse {
-	mbti: {
-		title: string
-		description: string
-		mbtiCode: string
-		mbtiName: string
-		shortAttributes: string[]
-		workStyles: string[]
-		introversionPercentage: number
-		thinkingPercentage: number
-		creativityPercentage: number
-		intuitionPercentage: number
-		planningPercentage: number
-		leadingPercentage: number
-	}
-	professions: {
-		professionId: number
-		percentage: number
-	}[]
-	majors: {
-		category: string
-	}[]
-	attributes: {
-		type: PersonalityAnalysisAttributeType
-		name: string
-		description: string
-		recommendations: string
-	}[]
+export interface MBTIAnalysis {
+	title: string
+	description: string
+	mbtiCode: string
+	mbtiName: string
+	shortAttributes: string[]
+	workStyles: string[]
+	introversionPercentage: number
+	thinkingPercentage: number
+	creativityPercentage: number
+	intuitionPercentage: number
+	planningPercentage: number
+	leadingPercentage: number
 }
 
-export interface LLMShortAnalysisResponse {
+export interface ProfessionAnalysis {
+	professionId: number
+	percentage: number
+}
+
+export interface MajorAnalysis {
+	category: MAJOR_CATEGORY
+}
+
+export interface AnalysisAttribute {
+	type: PersonalityAnalysisAttributeType
+	name: string
+	description: string
+	recommendations: string
+}
+
+export interface PersonalityAnalysisResponse {
+	mbti: MBTIAnalysis
+	professions: ProfessionAnalysis[]
+	majors: MajorAnalysis[]
+	attributes: AnalysisAttribute[]
+}
+
+export interface ShortAnalysisResponse {
 	analysis_summary: string
 	analysis_key_factors: string[]
+}
+
+export interface TestResultsDto {
+	testName: string
+	testResults: TestQuestionAnswer[]
+}
+
+export interface TestQuestionAnswer {
+	question: string
+	answer: string
+}
+
+export interface ShortSummaryOfTest {
+	testName: string
+	shortAnalysis: ShortAnalysisResponse
 }

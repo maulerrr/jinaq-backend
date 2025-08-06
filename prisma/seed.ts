@@ -7,15 +7,26 @@ import { join, resolve } from 'path';
 const prisma = new PrismaClient();
 
 async function main() {
-  const mockDir = resolve(__dirname, '../scripts/mock-data');
-  const sqlFiles = readdirSync(mockDir).filter((f) => f.endsWith('.sql'));
+  const mockDir = resolve(__dirname, 'scripts');
+  const sqlFiles = [
+    'countries.sql',
+    'cities.sql',
+    'professions.sql',
+    'institutions.sql',
+    'institution_majors.sql',
+    'institution_enrollment_documents.sql',
+    'institution_enrollment_requirements.sql',
+    'tests.sql',
+    'questions.sql',
+    'answers.sql',
+  ];
 
   for (const file of sqlFiles) {
     const filePath = join(mockDir, file);
-    console.log(`▶️  Seeding from ${file}…`);
+    console.log(`▶️  Seeding from ${file}...`);
 
     const sql = readFileSync(filePath, 'utf-8');
-    // split on semicolons (naïvely—won’t break on semis in strings)
+    // Split on semicolons (naïvely—won’t break on semis in strings)
     const statements = sql
       .split(';')
       .map((stmt) => stmt.trim())

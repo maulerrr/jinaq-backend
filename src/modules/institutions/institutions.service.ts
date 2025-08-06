@@ -7,9 +7,12 @@ import {
 	InstitutionFilterDto,
 	UniversityAnalysisRequestDto,
 	UniversityAnalysisDto,
-	LLMUniversityAnalysisResponse,
+	UniversityAnalysis,
+	BaseUniversityAnalysis,
+	InstituteProbability,
 } from './dtos/institutions.dto'
 import {
+	toBaseUniversityAnalysisDto,
 	toInstitutionCountryDto,
 	toInstitutionDetailsDto,
 	toInstitutionDto,
@@ -90,7 +93,7 @@ export class InstitutionsService {
 	async createUniversityAnalysis(
 		userId: number,
 		analysisRequest: UniversityAnalysisRequestDto,
-	): Promise<UniversityAnalysisDto> {
+	): Promise<BaseUniversityAnalysis> {
 		const llmResponse = await this.llmAdapter.getUniversityAnalysis(
 			userId,
 			analysisRequest.countryId,
@@ -101,14 +104,14 @@ export class InstitutionsService {
 			throw new InternalServerErrorException('Failed to get analysis from LLM')
 		}
 		// Now that we've checked for null, we can assert the type
-		const validatedLlmResponse: LLMUniversityAnalysisResponse = llmResponse
+		const validatedLlmResponse: InstituteProbability[] = llmResponse
 
 		const newAnalysis = await this.prisma.universitiesAnalysis.create({
 			data: {
 				userId,
 				institutes: {
-					create: validatedLlmResponse.institutes.map(institute => ({
-						institutionId: institute.institution.id,
+					create: validatedLlmResponse.map(institute => ({
+						institutionId: institute.institutionId,
 						chancePercentage: institute.chancePercentage,
 					})),
 				},
@@ -130,7 +133,76 @@ export class InstitutionsService {
 			},
 		})
 
-		return toUniversityAnalysisDto(newAnalysis)
+		return toBaseUniversityAnalysisDto(newAnalysis)
+	}
+
+	async getUniversityAnalysisById(
+		userId: number,
+		institutionId: number,
+	): Promise<UniversityAnalysisDto> {
+		const universityAnalysis = await this.prisma.universitiesAnalysisInstitute.findFirst({
+			where: { institutionId: institutionId },
+		})
+		if (!universityAnalysis) {
+			throw new NotFoundException('University analysis not found')
+		}
+
+		const llmResponse: UniversityAnalysis | null = await this.llmAdapter.getAnalysisByUniversity(
+			userId,
+			institutionId,
+		)
+
+		if (!llmResponse) {
+			throw new InternalServerErrorException('Failed to get analysis from LLM')
+		}
+
+		const attributes = await this.prisma.universitiesAnalysisResultsAttribute.createMany({
+			data: llmResponse.attributes.map(attribute => ({
+				name: attribute.name,
+				type: attribute.type,
+				recommendation: attribute.recommendation,
+				universitiesAnalysisInstitutesId: universityAnalysis.id,
+			})),
+		})
+
+		const plans = await this.prisma.universitiesAnalysisResultsPlan.createMany({
+			data: llmResponse.plan.map(plan => ({
+				order: plan.order,
+				name: plan.name,
+				description: plan.description,
+				durationMonth: plan.durationMonth,
+				universitiesAnalysisInstitutesId: universityAnalysis.id,
+			})),
+		})
+
+		if (attributes.count === 0 || plans.count === 0) {
+			throw new InternalServerErrorException('Failed to save analysis results')
+		}
+
+		const analysis = await this.prisma.universitiesAnalysis.findUnique({
+			where: { id: universityAnalysis.id },
+			include: {
+				institutes: {
+					include: {
+						institution: {
+							include: {
+								city: true,
+								country: true,
+								majors: true,
+								enrollmentDocuments: true,
+								enrollmentRequirements: true,
+							},
+						},
+						attributes: true,
+						plan: true,
+					},
+				},
+			},
+		})
+		if (!analysis) {
+			throw new NotFoundException('Analysis not found')
+		}
+		return toUniversityAnalysisDto(analysis)
 	}
 
 	async getLatestUniversityAnalysis(userId: number): Promise<UniversityAnalysisDto> {

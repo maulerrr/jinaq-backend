@@ -1,7 +1,10 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common'
 import { OpenAI } from 'openai'
 import { PromptBuilderService } from 'src/common/llm/prompt.builder'
-import { LLMUniversityAnalysisResponse } from 'src/modules/institutions/dtos/institutions.dto'
+import {
+	InstituteProbability,
+	UniversityAnalysis,
+} from 'src/modules/institutions/dtos/institutions.dto'
 import { AppConfigService } from 'src/common/config/config.service'
 
 @Injectable()
@@ -23,7 +26,7 @@ export class OpenAIUniversitiesAdapter {
 		userId: number,
 		countryId: number,
 		universitiesIds?: number[],
-	): Promise<LLMUniversityAnalysisResponse | null> {
+	): Promise<InstituteProbability[] | null> {
 		const { messages, maxTokens } = await this.promptBuilder.buildUniversityAnalysisPrompt(
 			userId,
 			countryId,
@@ -37,13 +40,12 @@ export class OpenAIUniversitiesAdapter {
 					model: this.config.openai.model,
 					max_tokens: maxTokens,
 					messages: messages,
-					response_format: { type: 'json_object' },
 				})
-				const text = res.choices[0]?.message?.content ?? 'null'
+				const text = res.choices[0]?.message?.content ?? '[]'
 				this.logger.debug(`Attempt ${attempt}: LLM response text: ${text}`)
 
 				const parsed = JSON.parse(text) as unknown
-				if (isLLMUniversityAnalysisResponse(parsed)) {
+				if (isInstituteProbabilityArray(parsed)) {
 					return parsed
 				}
 				this.logger.error(`Attempt ${attempt}: LLM response did not match expected format`, parsed)
@@ -59,30 +61,103 @@ export class OpenAIUniversitiesAdapter {
 		)
 		throw new InternalServerErrorException('AI university analysis failed after retries')
 	}
+
+	async getAnalysisByUniversity(
+		userId: number,
+		institution: number,
+	): Promise<UniversityAnalysis | null> {
+		const { messages, maxTokens } = await this.promptBuilder.buildPerUniversityAnalysisPrompt(
+			userId,
+			institution,
+		)
+
+		let lastError: unknown
+		for (let attempt = 1; attempt <= OpenAIUniversitiesAdapter.MAX_RETRIES; attempt++) {
+			try {
+				const res = await this.client.chat.completions.create({
+					model: this.config.openai.model,
+					max_tokens: maxTokens,
+					messages: messages,
+				})
+				const text = res.choices[0]?.message?.content ?? '[]'
+				this.logger.debug(`Attempt ${attempt}: LLM response text: ${text}`)
+
+				const parsed = JSON.parse(text) as unknown
+				if (isPerUniversityAnalysis(parsed)) {
+					return parsed
+				}
+				this.logger.error(`Attempt ${attempt}: LLM response did not match expected format`, parsed)
+			} catch (err) {
+				lastError = err
+				this.logger.error(`Attempt ${attempt}: LLM error in getAnalysisByUniversity`, err)
+			}
+		}
+
+		this.logger.error(
+			`All ${OpenAIUniversitiesAdapter.MAX_RETRIES} attempts failed for getAnalysisByUniversity`,
+			lastError,
+		)
+		throw new InternalServerErrorException('AI university analysis failed after retries')
+	}
 }
 
-/**
- * A basic type guard for LLMUniversityAnalysisResponse.
- * This implementation assumes the response object has the following structure:
- *
- * interface LLMUniversityAnalysisResponse {
- *   universityName: string;
- *   analysis: string;
- *   score: number;
- * }
- *
- * Update the properties and validations below based on the actual interface definition.
- */
-function isLLMUniversityAnalysisResponse(parsed: unknown): parsed is LLMUniversityAnalysisResponse {
-	if (typeof parsed !== 'object' || parsed === null) {
+function isInstituteProbability(data: unknown): InstituteProbability | null {
+	if (typeof data !== 'object' || data === null) {
+		return null
+	}
+
+	const response = data as Record<string, unknown>
+	if (typeof response.institutionId !== 'number' || typeof response.chancePercentage !== 'number') {
+		return null
+	}
+
+	return {
+		institutionId: response.institutionId,
+		chancePercentage: response.chancePercentage,
+	}
+}
+
+function isInstituteProbabilityArray(data: unknown): data is InstituteProbability[] {
+	if (!Array.isArray(data)) {
 		return false
 	}
 
-	// TODO: implement proper
-	const response = parsed as Record<string, unknown>
+	for (const item of data) {
+		if (!isInstituteProbability(item)) {
+			return false // If any item is invalid, return false
+		}
+	}
+
+	return true
+}
+
+function isPerUniversityAnalysis(data: unknown): data is UniversityAnalysis {
+	if (typeof data !== 'object' || data === null) {
+		return false
+	}
+
+	const response = data as Record<string, unknown>
 	return (
-		typeof response.universityName === 'string' &&
-		typeof response.analysis === 'string' &&
-		typeof response.score === 'number'
+		Array.isArray(response.attributes) &&
+		Array.isArray(response.plan) &&
+		response.attributes.every(attr => {
+			if (typeof attr !== 'object' || attr === null) return false
+			const a = attr as Record<string, unknown>
+			return (
+				typeof a.name === 'string' &&
+				['PROS', 'CONS'].includes(a.type as string) &&
+				(typeof a.recommendation === 'string' || a.recommendation === undefined) &&
+				(typeof a.description === 'string' || a.description === undefined)
+			)
+		}) &&
+		response.plan.every(p => {
+			const planItem = p as Record<string, unknown>
+			return (
+				typeof planItem.order === 'number' &&
+				typeof planItem.name === 'string' &&
+				(typeof planItem.description === 'string' || planItem.description === undefined) &&
+				(typeof planItem.durationMonth === 'number' || planItem.durationMonth === undefined)
+			)
+		})
 	)
 }

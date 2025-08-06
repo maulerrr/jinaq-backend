@@ -6,8 +6,15 @@ import {
 	TestQuestionDto,
 	TestQuestionSubmitDto,
 	PersonalityAnalysisDto,
+	TestResultsDto,
+	ShortSummaryOfTest,
 } from './dtos/tests.dto'
-import { toTestSummaryDto, toTestDetailsDto, toTestQuestionDto } from './utils/tests.mapper'
+import {
+	toTestSummaryDto,
+	toTestDetailsDto,
+	toTestQuestionDto,
+	toPersonalityAnalysisDto,
+} from './utils/tests.mapper'
 import { PromptBuilderService } from 'src/common/llm/prompt.builder'
 import { TestSubmissionStatus } from '@prisma/client'
 import { OpenAITestsAdapter } from 'src/common/adapters/llm/openai-tests.adapter'
@@ -186,7 +193,12 @@ export class TestsService {
 						questions: true,
 					},
 				},
-				submittedAnswers: true,
+				submittedAnswers: {
+					include: {
+						question: true,
+						answer: true,
+					},
+				},
 			},
 		})
 
@@ -195,12 +207,28 @@ export class TestsService {
 		}
 
 		if (updatedSubmission.submittedAnswers.length === updatedSubmission.test.questions.length) {
+			const testResults: TestResultsDto = {
+				testName: updatedSubmission.test.name,
+				testResults: updatedSubmission.submittedAnswers.map(sa => ({
+					question: sa.question.question,
+					answer: sa.answer.answer,
+				})),
+			}
+
+			const llmResponse = await this.llmAdapter.shortAnalysis(userId, testResults)
+
+			if (!llmResponse) {
+				throw new HttpException('Failed to get analysis from LLM', HttpStatus.INTERNAL_SERVER_ERROR)
+			}
+
 			await this.prisma.testSubmission.update({
 				where: { id: updatedSubmission.id },
-				data: { status: TestSubmissionStatus.COMPLETED },
+				data: {
+					analysisSummary: llmResponse.analysis_summary,
+					analysisKeyFactors: llmResponse.analysis_key_factors,
+					status: TestSubmissionStatus.COMPLETED,
+				},
 			})
-			// TODO: Implement _runShortAnalysis or leave as placeholder for user
-			// this._runShortAnalysis(updatedSubmission);
 		} else {
 			await this.prisma.testSubmission.update({
 				where: { id: updatedSubmission.id },
@@ -212,6 +240,8 @@ export class TestsService {
 	}
 
 	async analyzeTests(userId: number): Promise<PersonalityAnalysisDto> {
+		const testsCount = await this.prisma.test.count()
+
 		const submissions = await this.prisma.testSubmission.findMany({
 			where: { userId: userId },
 			include: {
@@ -225,71 +255,82 @@ export class TestsService {
 			},
 		})
 
+		if (submissions.length < testsCount) {
+			throw new HttpException('Not all tests are completed', HttpStatus.BAD_REQUEST)
+		}
+
+		if (submissions.length === 0) {
+			throw new NotFoundException('No test submissions found for user')
+		}
+
 		if (!submissions.every(sub => sub.status === TestSubmissionStatus.COMPLETED)) {
 			throw new HttpException('All tests must be completed before analysis', HttpStatus.BAD_REQUEST)
 		}
 
-		// TODO: Implement LLM call for personality analysis or leave as placeholder for user
-		// const testResults = submissions.map(sub => ({
-		// 	test_name: sub.test.name,
-		// 	analysis_summary: sub.analysisSummary,
-		// 	analysis_key_factors: sub.analysisKeyFactors,
-		// }));
-		// const prompt = this.promptBuilderService.buildPersonalityAnalysisPrompt(testResults);
-		// const llmResponse = await this.llmService.getPersonalityAnalysis(prompt);
+		const shortSummaries: ShortSummaryOfTest[] = submissions.map(sub => ({
+			testName: sub.test.name,
+			shortAnalysis: {
+				analysis_summary: sub.analysisSummary ?? '',
+				analysis_key_factors: sub.analysisKeyFactors,
+			},
+		}))
 
-		// if (!llmResponse) {
-		// 	throw new HttpException('Failed to get analysis from LLM', HttpStatus.INTERNAL_SERVER_ERROR);
-		// }
+		const llmResponse = await this.llmAdapter.getPersonalityAnalysis(userId, shortSummaries)
 
-		// return this.prisma.personalityAnalysis.create({
-		// 	data: {
-		// 		userId: userId,
-		// 		mbti: {
-		// 			create: {
-		// 				title: llmResponse.mbti.title,
-		// 				description: llmResponse.mbti.description,
-		// 				mbtiCode: llmResponse.mbti.mbtiCode,
-		// 				mbtiName: llmResponse.mbti.mbtiName,
-		// 				shortAttributes: llmResponse.mbti.shortAttributes,
-		// 				workStyles: llmResponse.mbti.workStyles,
-		// 				introversionPercentage: llmResponse.mbti.introversionPercentage,
-		// 				thinkingPercentage: llmResponse.mbti.thinkingPercentage,
-		// 				creativityPercentage: llmResponse.mbti.creativityPercentage,
-		// 				intuitionPercentage: llmResponse.mbti.intuitionPercentage,
-		// 				planningPercentage: llmResponse.mbti.planningPercentage,
-		// 				leadingPercentage: llmResponse.mbti.leadingPercentage,
-		// 			},
-		// 		},
-		// 		professions: {
-		// 			create: llmResponse.professions.map(p => ({
-		// 				professionId: p.professionId,
-		// 				percentage: p.percentage,
-		// 			})),
-		// 		},
-		// 		majors: {
-		// 			create: llmResponse.majors.map(m => ({
-		// 				category: m.category,
-		// 			})),
-		// 		},
-		// 		attributes: {
-		// 			create: llmResponse.attributes.map(a => ({
-		// 				type: a.type,
-		// 				name: a.name,
-		// 				description: a.description,
-		// 				recommendations: a.recommendations,
-		// 			})),
-		// 		},
-		// 	},
-		// 	include: {
-		// 		mbti: true,
-		// 		professions: { include: { profession: true } },
-		// 		majors: true,
-		// 		attributes: true,
-		// 	},
-		// }).then(toPersonalityAnalysisDto);
+		if (!llmResponse) {
+			throw new HttpException(
+				'Failed to get personality analysis from LLM',
+				HttpStatus.INTERNAL_SERVER_ERROR,
+			)
+		}
 
-		// Placeholder return for now
-		return {} as PersonalityAnalysisDto
+		const analysis = await this.prisma.personalityAnalysis.create({
+			data: {
+				userId: userId,
+				mbti: {
+					create: {
+						title: llmResponse.mbti.title,
+						description: llmResponse.mbti.description,
+						mbtiCode: llmResponse.mbti.mbtiCode,
+						mbtiName: llmResponse.mbti.mbtiName,
+						shortAttributes: llmResponse.mbti.shortAttributes,
+						workStyles: llmResponse.mbti.workStyles,
+						introversionPercentage: llmResponse.mbti.introversionPercentage,
+						thinkingPercentage: llmResponse.mbti.thinkingPercentage,
+						creativityPercentage: llmResponse.mbti.creativityPercentage,
+						intuitionPercentage: llmResponse.mbti.intuitionPercentage,
+						planningPercentage: llmResponse.mbti.planningPercentage,
+						leadingPercentage: llmResponse.mbti.leadingPercentage,
+					},
+				},
+				professions: {
+					create: llmResponse.professions.map(p => ({
+						professionId: p.professionId,
+						percentage: p.percentage,
+					})),
+				},
+				majors: {
+					create: llmResponse.majors.map(m => ({
+						category: m.category,
+					})),
+				},
+				attributes: {
+					create: llmResponse.attributes.map(a => ({
+						type: a.type,
+						name: a.name,
+						description: a.description,
+						recommendations: a.recommendations,
+					})),
+				},
+			},
+			include: {
+				mbti: true,
+				professions: { include: { profession: true } },
+				majors: true,
+				attributes: true,
+			},
+		})
+
+		return toPersonalityAnalysisDto(analysis)
 	}
 }

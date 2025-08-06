@@ -19,6 +19,7 @@ import {
 	InstitutionFilterDto,
 	UniversityAnalysisRequestDto,
 	UniversityAnalysisDto,
+	BaseUniversityAnalysis,
 } from './dtos/institutions.dto'
 import { ApiTags } from '@nestjs/swagger'
 import { GetCurrentUser } from 'src/common/decorators/get-current-user.decorator'
@@ -63,8 +64,18 @@ export class InstitutionsController {
 	async analyzeUniversities(
 		@Body() analysisRequest: UniversityAnalysisRequestDto,
 		@GetCurrentUser() user: User,
-	): Promise<UniversityAnalysisDto> {
+	): Promise<BaseUniversityAnalysis> {
 		return this.institutionsService.createUniversityAnalysis(user.id, analysisRequest)
+	}
+
+	@Get('analyze/:id')
+	@UseGuards(UserAuthGuard)
+	@HttpCode(HttpStatus.OK)
+	async getUniversityAnalysis(
+		@Param('id', ParseIntPipe) id: number,
+		@GetCurrentUser() user: User,
+	): Promise<UniversityAnalysisDto> {
+		return this.institutionsService.getUniversityAnalysisById(user.id, id)
 	}
 
 	@Get('analysis')

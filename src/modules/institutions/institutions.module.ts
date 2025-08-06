@@ -5,10 +5,12 @@ import { PrismaModule } from 'src/prisma/prisma.module'
 import { AuthModule } from '../auth/auth.module'
 import { CommonModule } from 'src/common/common.module'
 import { LlmModule } from 'src/common/llm/llm.module'
+import { OpenAIUniversitiesAdapter } from 'src/common/adapters/llm/openai-universities.adapter'
+import { AppConfigModule } from 'src/common/config/config.module'
 
 @Module({
-	imports: [PrismaModule, AuthModule, CommonModule, LlmModule],
+	imports: [AppConfigModule, PrismaModule, AuthModule, CommonModule, LlmModule],
 	controllers: [InstitutionsController],
-	providers: [InstitutionsService],
+	providers: [InstitutionsService, OpenAIUniversitiesAdapter],
 })
 export class InstitutionsModule {}
