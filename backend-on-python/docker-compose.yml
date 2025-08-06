@@ -1,0 +1,38 @@
+# For local development, only database is running
+#
+# docker compose up -d
+# uvicorn app.main:app --reload
+#
+
+services:
+  postgres:
+    container_name: jinaq-postgres
+    restart: unless-stopped
+    image: postgres:17
+    volumes:
+      - postgres_db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DATABASE__DB}
+      - POSTGRES_USER=${DATABASE__USERNAME}
+      - POSTGRES_PASSWORD=${DATABASE__PASSWORD}
+    env_file:
+      - .env
+    ports:
+      - "${DATABASE__PORT}:5432"
+
+  pgadmin:
+    container_name: jinaq-pgadmin
+    image: dpage/pgadmin4
+    depends_on:
+      - postgres
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PG__EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PG__PASSWORD}
+    restart: unless-stopped
+    env_file:
+      - .env
+
+volumes:
+  postgres_db:

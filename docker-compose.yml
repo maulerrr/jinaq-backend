@@ -1,0 +1,80 @@
+services:
+  postgres:
+    container_name: jinaq-postgres
+    image: postgres:latest
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5434}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    env_file:
+      - ./.env
+
+  mongodb:
+    container_name: jinaq-mongodb
+    image: mongo:7.0
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongodb-data:/data/db
+    env_file:
+      - ./.env
+
+  mongo-express:
+    container_name: jinaq-mongo-express
+    image: mongo-express:1.0.2
+    depends_on:
+      - mongodb
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_USER}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_PASSWORD}
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/
+      ME_CONFIG_BASICAUTH: false
+    restart: unless-stopped
+    env_file:
+      - ./.env
+
+  pgadmin:
+    container_name: jinaq-pgadmin
+    image: dpage/pgadmin4
+    depends_on:
+      - postgres
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PG_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PG_PASSWORD}
+    restart: unless-stopped
+    env_file:
+      - ./.env
+
+  minio:
+    container_name: jinaq-minio
+    image: minio/minio:RELEASE.2025-02-18T16-25-55Z
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web UI
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    volumes:
+      - minio-data:/data
+    command: server --console-address ":9001" /data
+    restart: unless-stopped
+    env_file:
+      - ./.env
+
+volumes:
+  postgres-data:
+  mongodb-data:
+  minio-data:
